@@ -77,7 +77,7 @@ function Set-UPD {
          $ConfirmPreference = 'None'
       }
       #Specify share with user profile disk VHDX files here
-      $updPath = "\\updserver.contoso.com\UPD"
+      $updPath = "\\tyngd-irk-inf01.rosneft.ru\UPD"
    }
    Process {
       $aduser = Get-ADUser -Identity $Identity -Properties DistinguishedName, DisplayName, SID, SamAccountName, UserPrincipalName
@@ -88,41 +88,41 @@ function Set-UPD {
                get-DiskImage -ImagePath $upd -ErrorAction Stop
             }
             catch {
-               Write-Error "Cannot access VHDX file. Probably user is logged on RD farm, or you do not have permissions on file. Error:`n$_"
+               Write-Error "Cannot access VHDX file. Error:`n$_"
                return
-
-
             }
-            Get-DiskImage -ImagePath $upd | Select-Object `
-            @{n = 'DistinguishedName'; e = { $aduser.DistinguishedName } },
-            @{n = 'DisplayName'; e = { $aduser.DisplayName } },
-            @{n = 'SamAccountName'; e = { $aduser.SamAccountName } },
-            @{n = 'UserPrincipalName'; e = { $aduser.UserPrincipalName } },
-            @{n = 'UPDPath'; e = { $_.ImagePath } },
-            @{n = 'UPDVHDXFileSize_GB'; e = { $_.FileSize / 1GB } },
-            @{n = 'UPDMaximumSize_GB'; e = { $_.Size / 1GB } },
-            @{n = 'UPDNewMaximumSize_GB'; e = { $NewSize / 1GB } }
-            $message = "Change UPD maximum size to $NewSize ?"
-         
-            if ($PSCmdlet.ShouldProcess($message, $upd, "Change maximum size to $NewSize")) {
-               $newsizemb = $NewSize / 1MB
-
-               #Powershell comandlets like Resize-VHD require Hyper-V Role installed. It seems the only way to extend VHDX on machine without Hyper-V role is to use diskpart:
-               "select vdisk file=""$upd""`nexpand vdisk maximum=$newsizemb" | Out-File updtool_temp.txt -Encoding ascii -Force
-               start-process "diskpart.exe" -Wait -NoNewWindow -ArgumentList "/s updtool_temp.txt"
-               Remove-Item updtool_temp.txt -Force 
-               #Still Resize-VHD may work faster, so if you have Hyper-V role installed on your machine you can replace code above with:
-               #Resize-VHD -Path $upd -SizeBytes $NewSize
-
-               Mount-DiskImage -ImagePath $upd -NoDriveLetter
-               $part = Get-Partition (Get-DiskImage -ImagePath $upd).Number
-               Set-Disk -Number $part.DiskNumber -IsOffline $false
-               Set-Disk -Number $part.DiskNumber -IsReadOnly $false
-               Resize-Partition -DiskNumber $part.DiskNumber -PartitionNumber $part.PartitionNumber -Size (Get-PartitionSupportedSize -DiskNumber $part.DiskNumber -PartitionNumber $part.PartitionNumber).SizeMax
-               set-disk -Number $part.DiskNumber -IsOffline $true
-               Dismount-DiskImage -ImagePath $upd
-
+            $updimage = Get-DiskImage -ImagePath $upd
+            [PSCustomObject]@{'DistinguishedName' = $aduser.DistinguishedName
+               'DisplayName'                      = $aduser.DisplayName
+               'SamAccountName'                   = $aduser.SamAccountName
+               'UserPrincipalName'                = $aduser.UserPrincipalName
+               'UPDPath'                          = $updimage.ImagePath
+               'UPDVHDXFileSize_GB'               = $updimage.FileSize / 1GB
+               'UPDMaximumSize_GB'                = $updimage.Size / 1GB
+               'UPDNewMaximumSize_GB'             = $NewSize / 1GB
             }
+            if ($updimage.Size -lt $NewSize) {
+               $message = "Change UPD maximum size to $NewSize ?"
+               if ($PSCmdlet.ShouldProcess($message, $upd, "Change maximum size to $NewSize")) {
+                  $newsizemb = $NewSize / 1MB
+
+                  #Powershell comandlets like Resize-VHD require Hyper-V Role installed. It seems the only way to extend VHDX on machine without Hyper-V role is to use diskpart:
+                  "select vdisk file=""$upd""`nexpand vdisk maximum=$newsizemb" | Out-File updtool_temp.txt -Encoding ascii -Force
+                  start-process "diskpart.exe" -Wait -NoNewWindow -ArgumentList "/s updtool_temp.txt"
+                  Remove-Item updtool_temp.txt -Force 
+                  #Still Resize-VHD may work faster, so if you have Hyper-V role installed on your machine you can replace code above with:
+                  #Resize-VHD -Path $upd -SizeBytes $NewSize
+
+                  Mount-DiskImage -ImagePath $upd -NoDriveLetter
+                  $part = Get-Partition (Get-DiskImage -ImagePath $upd).Number
+                  Set-Disk -Number $part.DiskNumber -IsOffline $false
+                  Set-Disk -Number $part.DiskNumber -IsReadOnly $false
+                  Resize-Partition -DiskNumber $part.DiskNumber -PartitionNumber $part.PartitionNumber -Size (Get-PartitionSupportedSize -DiskNumber $part.DiskNumber -PartitionNumber $part.PartitionNumber).SizeMax
+                  set-disk -Number $part.DiskNumber -IsOffline $true
+                  Dismount-DiskImage -ImagePath $upd
+               }
+            }
+            else { Write-Error "Current UPD Maximum size $($updimage.size) bytes is more or equal than new size $NewSize bytes" }
          }
          else { Write-Error "UPD $upd for user $Identity with SID $($aduser.SID) does not exist." }
       }
