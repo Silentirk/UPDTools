@@ -77,7 +77,7 @@ function Set-UPD {
          $ConfirmPreference = 'None'
       }
       #Specify share with user profile disk VHDX files here
-      $updPath = "\\tyngd-irk-inf01.rosneft.ru\UPD"
+      $updPath = "\\updserver.contoso.com\UPD"
    }
    Process {
       $aduser = Get-ADUser -Identity $Identity -Properties DistinguishedName, DisplayName, SID, SamAccountName, UserPrincipalName
