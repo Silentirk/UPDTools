@@ -88,7 +88,7 @@ function Set-UPD {
                get-DiskImage -ImagePath $upd -ErrorAction Stop
             }
             catch {
-               Write-Error "Cannot access VHDX file. Error:`n$_"
+               Write-Error "Cannot access VHDX file.  Probably user is logged on RD farm, or you do not have permissions on file. Error:`n$_"
                return
             }
             $updimage = Get-DiskImage -ImagePath $upd
@@ -108,11 +108,23 @@ function Set-UPD {
 
                   #Powershell comandlets like Resize-VHD require Hyper-V Role installed. It seems the only way to extend VHDX on machine without Hyper-V role is to use diskpart:
                   "select vdisk file=""$upd""`nexpand vdisk maximum=$newsizemb" | Out-File updtool_temp.txt -Encoding ascii -Force
-                  start-process "diskpart.exe" -Wait -NoNewWindow -ArgumentList "/s updtool_temp.txt"
-                  Remove-Item updtool_temp.txt -Force 
+                  Start-Process "diskpart.exe" -Wait -NoNewWindow -ArgumentList "/s updtool_temp.txt"
+                  Remove-Item updtool_temp.txt -Force
+                  Start-Sleep -Seconds 2
                   #Still Resize-VHD may work faster, so if you have Hyper-V role installed on your machine you can replace code above with:
                   #Resize-VHD -Path $upd -SizeBytes $NewSize
-
+                  try {
+                     get-DiskImage -ImagePath $upd -ErrorAction Stop
+                  }
+                  catch {
+                     Write-Error "Cannot access VHDX file. Probably user is logged on RD farm, or you do not have permissions on file. Error:`n$_"
+                     return
+                  }
+                  $updimage2 = Get-DiskImage -ImagePath $upd
+                  if ($updimage.Size -eq $updimage2.Size) {
+                     Write-Error "It seems diskpart could not extend VHD maximum size. Check if the file is not in use and try again."
+                     return
+                  }
                   Mount-DiskImage -ImagePath $upd -NoDriveLetter
                   $part = Get-Partition (Get-DiskImage -ImagePath $upd).Number
                   Set-Disk -Number $part.DiskNumber -IsOffline $false
