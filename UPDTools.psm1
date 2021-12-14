@@ -108,7 +108,7 @@ function Set-UPD {
 
                   #Powershell comandlets like Resize-VHD require Hyper-V Role installed. It seems the only way to extend VHDX on machine without Hyper-V role is to use diskpart:
                   "select vdisk file=""$upd""`nexpand vdisk maximum=$newsizemb" | Out-File updtool_temp.txt -Encoding ascii -Force
-                  Start-Process "diskpart.exe" -Wait -NoNewWindow -ArgumentList "/s updtool_temp.txt"
+                  Start-Process "diskpart.exe" -Wait -NoNewWindow -Verb RunAs -ArgumentList "/s updtool_temp.txt"
                   Remove-Item updtool_temp.txt -Force
                   Start-Sleep -Seconds 2
                   #Still Resize-VHD may work faster, so if you have Hyper-V role installed on your machine you can replace code above with:
