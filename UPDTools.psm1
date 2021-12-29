@@ -17,12 +17,12 @@ function Search-ADUser {
    [Alias("sad")]
    Param
    (
-      # String for search
+      # String to search
       [Parameter(Mandatory = $true,
          ValueFromPipelineByPropertyName = $true,
          Position = 0)]
       [String[]]$Strings,
-      # Search in all domain. By default it is limited to specific organizational unit specified in code below, it could be useful for very large domains.
+      # Search through all domain. By default search is limited to the organizational unit specified in the code below, it may be useful for very large domains.
       [switch]$AllDomain
    )
 
@@ -46,9 +46,9 @@ function Search-ADUser {
 
 <#
 .Synopsis
-   Sets new size for UPD for specific user.
+   Sets new size of UPD for a specific user.
 .DESCRIPTION
-   You can specify user as first parameter ($Identity), or you can pipeline some user (or collection of users) from Get-ADUser, Search-ADUser, Get-ADGroupMember comandlets. You cannot specify size lower than current size. Command must be run with administrator privileges. User must not be logged on with this profile.
+   You can specify a user as the first parameter ($Identity), or you can pipeline some user (or collection of users) from Get-ADUser, Search-ADUser, Get-ADGroupMember comandlets. You cannot specify size lower than current size. Command must be run with administrator privileges. User must not be logged on with this profile.
 .EXAMPLE
    Increase UPD sizes for all managers:   
    Search-ADUser "manager" | Set-UPD -NewSize 20GB
@@ -76,7 +76,7 @@ function Set-UPD {
       if ($Force) {
          $ConfirmPreference = 'None'
       }
-      #Specify share with user profile disk VHDX files here
+      #Specify a share with user profile disk VHDX files here:
       $updPath = "\\updserver.contoso.com\UPD"
    }
    Process {
@@ -88,7 +88,7 @@ function Set-UPD {
                get-DiskImage -ImagePath $upd -ErrorAction Stop
             }
             catch {
-               Write-Error "Cannot access VHDX file.  Probably user is logged on RD farm, or you do not have permissions on file. Error:`n$_"
+               Write-Error "Cannot access VHDX file.  Probably user is logged on your RD farm, or you do not have permissions on file. Error:`n$_"
                return
             }
             $updimage = Get-DiskImage -ImagePath $upd
@@ -146,9 +146,9 @@ function Set-UPD {
 
 <#
 .Synopsis
-   Gets current sizes for UPD for specific user.
+   Gets current sizes of UPD for a specific user.
 .DESCRIPTION
-   You can specify AD user as first parameter ($Identity), or you can pipeline some user (or collection of users) from Get-ADUser, Get-ADGroupMember and similar comandlets (or Search-ADUser comandlet from this module). Command must be run with administrator privileges.  User must not be logged on with this profile.
+   You can specify AD user as the first parameter ($Identity), or you can pipeline some user (or collection of users) from Get-ADUser, Get-ADGroupMember and similar comandlets (or Search-ADUser comandlet from this module). Command must be run with administrator privileges.  User must not be logged on with this profile.
 .EXAMPLE
    Get UPD sizes for all managers:   
    Search-ADUser "manager" | Get-UPD
